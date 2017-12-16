@@ -1,0 +1,5 @@
+(cons (+ (quote 1)
+         (guard (_ (else (quote 6))) (quote 3)))
+      (+ (quote 1)
+         (guard (_ (else (quote 6)))
+                (raise (quote 1)))))
