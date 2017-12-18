@@ -185,6 +185,13 @@
         (if ,check
             (apply ,(t-desugar e0) ,(t-desugar e1))
             (prim halt '"Error: Non-function value is applied.")))]
+
+    [`(/ ,e0)
+     (define check (gensym 'check))
+     `(let ([,check ,(t-desugar `(= '0 ,e0))])
+        (if ,check
+            (prim halt (quote ,(~a "Error: Division by zero. Expression was '" e "'")))
+            (prim / ,(t-desugar e0))))]
     
     [`(/ ,es ...)
      (define check (gensym 'check))

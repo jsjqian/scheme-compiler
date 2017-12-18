@@ -210,7 +210,7 @@
   (if (string? val1)
       #t
       (begin
-        (display (format "Test-scm-llvm: Received ~a instead of a stream after top-level processing\n"
+        (display (format "Test-scm-llvm: Received ~a instead of a string after top-level processing\n"
                          val1))
         #f)))
 
