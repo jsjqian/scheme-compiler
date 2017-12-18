@@ -8,6 +8,7 @@
          prefix
          datum?
          read-begin
+         test-error
          test-scm-llvm
          test-top-level
          test-desugar
@@ -201,6 +202,16 @@
       (begin
         (display (format "Test-scm-llvm: two different values (~a and ~a) before and after top-level processing\n"
                          val1 val2))
+        #f)))
+
+(define (test-error scm-llvm scm-e)
+  (define llvm-e (scm-llvm scm-e)) 
+  (define val1 (eval-llvm llvm-e))   
+  (if (string? val1)
+      #t
+      (begin
+        (display (format "Test-scm-llvm: Received ~a instead of a stream after top-level processing\n"
+                         val1))
         #f)))
 
 
