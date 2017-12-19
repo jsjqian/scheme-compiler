@@ -5,6 +5,10 @@ A compiler that takes in Scheme and outputs LLVM. Project designed by Thomas Gil
 ### Academic Integrity Declaration
 I, Jack Qian, pledge on my honor that I have not given or received any unauthorized assistance on this assignment.
 
+## Dependencies
+
+To use this compiler, install [racket](https://docs.racket-lang.org/) and [LLVM](http://llvm.org/docs/).
+
 ## Compilation Passes
 
 1. **Top-Level:** In this stage, all implicit begin forms are made explicit and defines are nested in ```letrec*```. It also quotes all datums and desugars quasiquote and unquote for use in later passes.

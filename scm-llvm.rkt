@@ -8,22 +8,67 @@
 ;; Assignment 2 (Taken from Thomas Gilray)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+
+(define (set-wrap es)
+  (match es
+    [`(,h)
+     `(set-add (set) ,h)]
+    [`(,h . ,t)
+     `(set-add ,(set-wrap t) ,h)]))
+(define (hash-wrap es)
+  (display (length es))
+  (if (even? (length es))
+      (match es
+        [`(,h1 ,h2)
+         `(hash-set (hash) ,h1 ,h2)]
+        [`(,h1 ,h2 . ,t)
+         `(hash-set ,(hash-wrap t) ,h1 ,h2)])
+      `(halt (quote ,(~a "Error: Uneven number of args applied to hash. Args were '" es "'")))))
+
+(define ((contains xs) e)
+  (match e
+    [`(lambda ,es ...)
+     #f]
+    [else (match e
+            [`()
+             #f]
+            [(? prim? op)
+             #f]
+            [(? reserved? op)
+             #f]
+            [(? symbol? x)
+             (set-member? xs x)]
+            [`(,es ...)
+             (ormap (contains xs) es)]
+            [else #f])]))
+
 (define (t-desugar e) 
   (match e
     [`(letrec ([,xs ,es] ...) ,e0)
      (define ts (map gensym xs))
      `(let ,(map (lambda (x e) `(,x '())) xs es)
-        (let ,(map (lambda (x e) `(,x ,(t-desugar e))) ts es)
+        (let ,(map (lambda (x e2)           
+                     (if ((contains (list->set xs)) `(,e2))
+                         `(,x (prim halt (quote ,(~a "Error: Variable uninitialized. Expression was '" e "'"))))
+                         `(,x ,(t-desugar e2)))) ts es)
           ,(t-desugar
             `(begin
-               ,@(map (lambda (x t) `(set! ,x ,t)) xs ts)
+               ,@(map (lambda (x t)
+                        `(set! ,x ,t))                              
+                      xs ts)
                ,e0))))]
 
     [`(letrec* ([,xs ,es] ...) ,e0)
+     (define vars (list->set xs))
      `(let ,(map (lambda (x e) `(,x '())) xs es)
         ,(t-desugar
           `(begin
-             ,@(map (lambda (x e) `(set! ,x ,e)) xs es)
+             ,@(map
+                (lambda (x e1)
+                  (set! vars (set-remove vars x))
+                  (if ((contains vars) `(,e1))
+                      `(halt (quote ,(~a "Error: Variable '" x "' not yet initialized. Expression was '" e "'")))             
+                      `(set! ,x ,e1))) xs es)
              ,e0)))]
 
     [`(lambda ,(? symbol? x) ,e0)
@@ -184,14 +229,14 @@
      `(let ([,check ,(t-desugar `(procedure? ,e0))])
         (if ,check
             (apply ,(t-desugar e0) ,(t-desugar e1))
-            (prim halt '"Error: Non-function value is applied.")))]
+            (prim halt (quote ,(~a "Error: Non-function value is applied. Expression was '" e "'")))))]
 
     [`(/ ,e0)
      (define check (gensym 'check))
      `(let ([,check ,(t-desugar `(= '0 ,e0))])
         (if ,check
             (prim halt (quote ,(~a "Error: Division by zero. Expression was '" e "'")))
-            (prim / ,(t-desugar e0))))]
+            (prim / '1 ,(t-desugar e0))))]
     
     [`(/ ,es ...)
      (define check (gensym 'check))
@@ -203,6 +248,27 @@
             (prim halt (quote ,(~a "Error: Division by zero. Expression was '" e "'")))
             (prim / . ,(map t-desugar es))))]
 
+    [`(set ,es ...)
+     (if (= 0 (length es))
+         `(prim set)
+         (t-desugar (set-wrap es)))]
+
+    [`(hash ,es ...)
+     (if (= 0 (length es))
+         `(prim hash)
+         (t-desugar (hash-wrap es)))]
+
+    [`(hash-ref ,e0 ,e1 ,e2)
+     (t-desugar `(if (hash-has-key? ,e0 ,e1)
+                     (hash-ref ,e0 ,e1)
+                     ,(match e2
+                        [`(lambda () ,e3)
+                         `((lambda (_) ,e3) ,e2)]
+                        [else e2])))]
+    
+    [`(hash-ref ,e0 ,e1)
+     `(prim hash-ref ,(t-desugar e0) ,(t-desugar e1))]
+    
     [`(,(? prim? op) ,es ...)
      `(prim ,op . ,(map t-desugar es))]
 
@@ -448,7 +514,7 @@
        `(call/cc ,((rename env) e))]
 
       [(? symbol? x)
-       (hash-ref env x `(prim halt (quote ,(~a "Error: Use of not-yet-initialized variable: " x))))]
+       (hash-ref env x)]
 
       [`(quote ,(? datum? d))
        `(quote ,d)]

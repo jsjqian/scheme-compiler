@@ -1,6 +1,7 @@
 
 
 //#include "gc.h"    // Add back in and change tags if we want to use GC
+#include "hamt.h"
 #include "stdio.h"
 #include "stdlib.h"
 #include "stdint.h"
@@ -210,10 +211,124 @@ u64 const_init_symbol(const char* s)
 
 
 
+class key
+{
+public:
+    const u64 x;
+
+    key(u64 x)
+        : x(x)
+    {}
+
+    u64 hash() const
+    {
+        const u8* data = reinterpret_cast<const u8*>(this);
+        u64 h = 0xcbf29ce484222325;
+        for (u32 i = 0; i < sizeof(key); ++i && ++data)
+        {
+            h = h ^ *data;
+            h = h * 0x100000001b3;
+        }
+
+        return h;
+    }
+
+    bool operator==(const key& t) const
+    {
+        return t.x == this->x;
+    }
+};
 
 
 
 /////////// PRIMS
+
+// Sets
+
+u64 prim_set()
+{
+  const hamt<key, key>* h = new ((hamt<key,key>*)malloc(sizeof(hamt<key,key>))) hamt<key,key>();
+  return ENCODE_OTHER((u64*)h);
+}
+
+u64 prim_set_45add(u64 h, u64 k)
+{
+  //ASSERT_TAG(v, OTHER_TAG, "first argument to vector-ref must be a vector")
+  const hamt<key, key>* hash = (hamt<key,key>*)DECODE_OTHER(h);
+  const key* const kkey = new ((key*)malloc(sizeof(key))) key(k);
+  //const hamt<key, key>* a = hash->insert(kkey, kkey);
+  return ENCODE_OTHER(hash->insert(kkey, kkey));
+}
+
+u64 prim_set_45remove(u64 h, u64 k)
+{
+  //ASSERT_TAG(v, OTHER_TAG, "first argument to vector-ref must be a vector")
+  const hamt<key, key>* hash = (hamt<key,key>*)DECODE_OTHER(h);
+  const key* const kkey = new ((key*)malloc(sizeof(key))) key(k);
+  return ENCODE_OTHER((u64*)hash->insert(kkey, NULL));
+}
+
+u64 prim_set_45member_63(u64 h, u64 k)
+{
+  const hamt<key, key>* hash = (hamt<key,key>*)DECODE_OTHER(h);
+  const key* const akey = new ((key*)malloc(sizeof(key))) key(k);
+  const key* const v = hash->get(akey);
+  if (v != NULL) {
+    return V_TRUE;
+  }
+  return V_FALSE;
+}
+
+// Hash
+
+u64 prim_hash()
+{
+  const hamt<key, key>* h = new ((hamt<key,key>*)malloc(sizeof(hamt<key,key>))) hamt<key,key>();
+  return ENCODE_OTHER((u64*)h);
+}
+
+u64 prim_hash_45ref(u64 h, u64 k)
+{
+  const hamt<key, key>* hash = (hamt<key,key>*)DECODE_OTHER(h);
+  const key* const akey = new ((key*)malloc(sizeof(key))) key(k);
+  const key* const v = hash->get(akey);
+  if (v == NULL) {
+    printf("'\"Error: Key not in hash.\"");
+    printf("\n");
+    exit(0);
+    return V_NULL; 
+  }
+  return v->x;
+}
+
+u64 prim_hash_45set(u64 h, u64 k, u64 v)
+{
+  //ASSERT_TAG(v, OTHER_TAG, "first argument to vector-ref must be a vector")
+  const hamt<key, key>* hash = (hamt<key,key>*)DECODE_OTHER(h);
+  const key* const kkey = new ((key*)malloc(sizeof(key))) key(k);
+  const key* const vkey = new ((key*)malloc(sizeof(key))) key(v);
+  const hamt<key, key>* a = hash->insert(kkey, vkey);
+  return ENCODE_OTHER((u64*)a);
+}
+
+u64 prim_hash_45remove(u64 h, u64 k)
+{
+  //ASSERT_TAG(v, OTHER_TAG, "first argument to vector-ref must be a vector")
+  const hamt<key, key>* hash = (hamt<key,key>*)DECODE_OTHER(h);
+  const key* const kkey = new ((key*)malloc(sizeof(key))) key(k);
+  return ENCODE_OTHER(hash->remove(kkey));
+}
+
+u64 prim_hash_45has_45key_63(u64 h, u64 k)
+{
+  const hamt<key, key>* hash = (hamt<key,key>*)DECODE_OTHER(h);
+  const key* const akey = new ((key*)malloc(sizeof(key))) key(k);
+  const key* const v = hash->get(akey);
+  if (v != NULL) {
+    return V_TRUE;
+  }
+  return V_FALSE;
+}
 
     
 ///// effectful prims:
@@ -270,6 +385,12 @@ u64 prim_print(u64 v)
 {
     if (v == V_NULL)
         printf("'()");
+    else if (v == V_TRUE)
+        printf("#t");
+    else if (v == V_FALSE)
+        printf("#f");
+    else if (v == V_VOID)
+        printf("#<void>");
     else if ((v&7) == CLO_TAG)
         printf("#<procedure>");
     else if ((v&7) == CONS_TAG)
@@ -645,7 +766,4 @@ GEN_EXPECT1ARGLIST(applyprim_not, prim_not)
 
 
 }
-
-
-
 
