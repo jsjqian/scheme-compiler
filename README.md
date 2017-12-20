@@ -159,7 +159,7 @@ During run-time, some errors will be caught and a message about the error will b
   * Associated tests: ```err-not-func-0.scm```, ```err-not-func-1.scm```
 
 * **Use of not-yet-initialized letrec or letrec* variable.**
-  * If a not-yet-initialized variable is used, an error message will be returned stating the variable that was not initialized.
+  * If in a letrec or letrec*, a variable is uninitialized when it is used, an error message will be returned with the expression that has the improper usage..
   * Associated tests: ```err-uninit-vars-0.scm```, ```err-uninit-vars-1.scm```
   
 * **Division by zero.**
@@ -176,3 +176,97 @@ Given more time, hopefully these run-time errors could be handled and increase t
 
 ### Testing
 Currently, error tests can be run through the command given above. These tests simply check to see if the returned value is a string and returns true if so, false otherwise. This may be changed in the future.
+
+## Additional Features
+
+There are two main features that are included in this compiler: hash tables and hash sets.
+
+### Hash Tables
+
+A hash table allows storage of key value pairs. The hash table implementaion for this compiler is based on HAMT, meaning hash tables are immutable. Methods that modify the hash table will return a new hash table with the updated values. These are the current operations supported:
+
+```scheme
+(hash key val ... ...) → hash?
+  key : any/c
+  val : any/c
+```
+Creates an immutable hash table with each given key mapped to the following val. Each key must have a val, so the total number of arguments to ```hash``` must be even.
+
+```scheme
+(hash-set hash key v) → hash?
+  hash : hash?
+  key : any/c
+  v : any/c
+```
+Functionally extends ```hash``` by mapping key to v, overwriting any existing mapping for ```key```, and returning the extended hash table.
+
+```scheme
+(hash-ref hash key [failure-result]) → any
+  hash : hash?
+  key : any/c
+  failure-result : any/c
+```
+Returns the value for ```key``` in ```hash```. If no value is found for ```key```, then ```failure-result``` determines the result:
+* If ```failure-result``` is a procedure, it is called with no arguments to produce the result.
+* Otherwise, ```failure-result``` is returned as the result.
+
+```scheme
+(hash-has-key? hash key) → boolean?
+  hash : hash?
+  key : any/c
+```
+Returns ```#t``` if ```hash ``` contains a value for the given ```key```, ```#f``` otherwise.
+
+```scheme
+(hash-remove hash key) → hash?
+  hash : hash?
+  key : any/c
+```
+Functionally removes any existing mapping for ```key``` in ```hash```, returning the fresh hash table.
+
+### Hash Sets
+
+A hash set stores values. The hash set implementaion for this compiler is based on HAMT, meaning hash sets are immutable. Methods that modify the hash set will return a new hash set with the updated values. These are the current operations supported:
+
+```scheme
+(set v ...) → set?
+  v : any/c
+```
+Creates a hash set with the given ```v```s as elements.
+
+```scheme
+(set-member? st v) → boolean?
+  st : set?
+  v : any/c
+```
+Returns ```#t``` if ```v``` is in ```st```, ```#f``` otherwise.
+
+```scheme
+(set-add st v) → set?
+  st : set?
+  v : any/c
+```
+Produces a set that includes ```v``` plus all elements of ```st```.
+
+```scheme
+(set-remove st v) → set?
+  st : set?
+  v : any/c
+```
+Produces a set that includes all elements of ```st``` except ```v```.
+
+## Bugs and Areas for Improvement
+
+This compiler, while functional, is still in early stages and has several issues that affect its performance. Here are major bugs that have not been addressed yet:
+
+* **Inefficient Code**
+  * The length of the code produced by this code is quite long. Just the ```header.ll``` file, which contains implemetations of the primitive operations supported by this compiler, is already over 10,000 lines long. This makes the compiled binary code take a decent amount of time to actually execute and is not ideal from an efficiency perspective.
+
+* **Run-time Error Handling**
+  * The way run-time errors are handled by this compiler is by either adding checks during compilation that make sure no invalid operations take place or by guessing where an error could occur and placing a halt statement in case execution reaches there. While this may be satisfactory at a basic level, under more stringent testing with more diverse test cases, it is possible that the run-time errors will no longer be handled properly. In addition, some of these checks could be left as compile time errors instead of waiting until execution which could save a user time during development.
+
+* **Memory Usage**
+  * This compiler has little regard for efficient usage of memory. There are no calls to free allocated memory and it does not make usage of any form of garbage collection. There was difficulty associated with actually installing the Boehm garbage collector so it has been left as a future improvement. However, this means that given large enough programs, the resulting binary could consume staggering amounts of memory that is not ideal for usage.
+
+* **Usage of HAMT**
+  * For the ```set-remove``` function, there was difficulty in getting the given HAMT implementation to actually remove an element from the set. It's possible that with some further investigation the problem can be resolved, but for now it limits the usefulness of the hash set.
