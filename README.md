@@ -158,7 +158,7 @@ During run-time, some errors will be caught and a message about the error will b
   * If a non-function value is applied, an error message will be returned stating that a non-function value was applied and then the application that caused the error.
   * Associated tests: ```err-not-func-0.scm```, ```err-not-func-1.scm```
 
-* **Use of not-yet-initialized letrec or letrec* variable.**
+* **Use of not-yet-initialized letrec or letrec\* variable.**
   * If in a letrec or letrec*, a variable is uninitialized when it is used, an error message will be returned with the expression that has the improper usage..
   * Associated tests: ```err-uninit-vars-0.scm```, ```err-uninit-vars-1.scm```
   
@@ -172,6 +172,7 @@ There are several run-time errors that are not handled, including:
 * Integer overflows
 * Memory limits
 * Correct number of arguments for primitives
+
 Given more time, hopefully these run-time errors could be handled and increase the versatility of this compiler
 
 ### Testing
@@ -273,3 +274,7 @@ This compiler, while functional, is still in early stages and has several issues
 
 * **Tagging**
   * Currently, hash tables and hash sets are not tagged in any special way besides the OTHER_TAG. This makes it difficult to create the ```hash?``` and ```set?``` functions. There are no checks in place in the event that an invalid argument is passed to the hash functions and there can also be uncertain effects when misusing one for the other.
+
+### Notes
+
+This was only tested with clang++ 5.0. It is not certain if it will work with clang++ 3.9 but there doesn't seem to be any reason it won't.
