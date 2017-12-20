@@ -270,3 +270,6 @@ This compiler, while functional, is still in early stages and has several issues
 
 * **Usage of HAMT**
   * For the ```set-remove``` function, there was difficulty in getting the given HAMT implementation to actually remove an element from the set. It's possible that with some further investigation the problem can be resolved, but for now it limits the usefulness of the hash set.
+
+* **Tagging**
+  * Currently, hash tables and hash sets are not tagged in any special way besides the OTHER_TAG. This makes it difficult to create the ```hash?``` and ```set?``` functions. There are no checks in place in the event that an invalid argument is passed to the hash functions and there can also be uncertain effects when misusing one for the other.
